@@ -65,12 +65,3 @@ func NewMemorySearcher(branches []*Branch) (Searcher, error) {
 	return newBleveSearcher(idx), nil
 }
 
-// Stubs to make the package compile until Task 5 lands query.go.
-// Task 5 deletes these and provides the real definitions in query.go.
-// These are temporary placeholders that satisfy the Searcher interface.
-type SearchRequest struct{}
-type SearchResults struct{}
-
-func (b *bleveSearcher) Search(req SearchRequest) (*SearchResults, error) {
-	return nil, fmt.Errorf("Search not yet implemented (Task 5)")
-}
