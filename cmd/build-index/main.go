@@ -204,6 +204,10 @@ func downloadCSV(tag string) (path, resolvedTag, rbiDate string, err error) {
 		return "", "", "", fmt.Errorf("download csv: %w", err)
 	}
 	defer dlResp.Body.Close()
+	if dlResp.StatusCode != 200 {
+		os.Remove(tmp.Name())
+		return "", "", "", fmt.Errorf("download csv status %d", dlResp.StatusCode)
+	}
 	if _, err := io.Copy(tmp, dlResp.Body); err != nil {
 		os.Remove(tmp.Name())
 		return "", "", "", fmt.Errorf("copy csv: %w", err)
