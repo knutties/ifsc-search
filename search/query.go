@@ -76,8 +76,12 @@ func (b *bleveSearcher) Search(req SearchRequest) (*SearchResults, error) {
 	}
 	if req.Bank != "" && !ok {
 		// User named a bank we cannot resolve — empty results, not an error.
-		return &SearchResults{Limit: req.Limit, Offset: req.Offset,
-			Results: []ResultItem{}}, nil
+		return &SearchResults{
+			Total:   0,
+			Limit:   req.Limit,
+			Offset:  req.Offset,
+			Results: []ResultItem{},
+		}, nil
 	}
 
 	q := buildQuery(bankCode, req.Q)
@@ -166,8 +170,8 @@ func buildQuery(bankCode, q string) query.Query {
 	if q != "" {
 		conj.AddQuery(textQuery(q))
 	} else if bankCode == "" {
-		// Validate() should have caught this, but be defensive.
-		conj.AddQuery(bleve.NewMatchAllQuery())
+		// Internal invariant: Search() validates before calling buildQuery.
+		panic("buildQuery called with empty bankCode and q — Validate() bypassed")
 	}
 	return conj
 }

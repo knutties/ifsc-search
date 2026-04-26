@@ -119,6 +119,7 @@ func TestSearch_UnknownBank_ReturnsEmpty(t *testing.T) {
 	res, err := s.Search(SearchRequest{Bank: "ZZZZ", Q: "andheri"})
 	require.NoError(t, err)
 	assert.Equal(t, 0, res.Total)
+	assert.Empty(t, res.Results)
 }
 
 func TestSearch_PaginationOffsetAndTotal(t *testing.T) {
