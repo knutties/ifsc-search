@@ -16,11 +16,39 @@ The index lands in `./index/` (gitignored) along with `version.json`.
 
 ## Run the server
 
+### From source
+
+Builds the binary locally and serves the index in `./index/`:
+
 ```bash
 make run
 # IFSC_SEARCH_PORT and IFSC_SEARCH_INDEX_PATH override defaults
 # PATH_PREFIX mounts all routes under a sub-path, e.g. PATH_PREFIX=/ifsc
 # exposes /ifsc/search, /ifsc/healthz, /ifsc/banks, and /ifsc/ifsc/{code}
+```
+
+### From the published GHCR image
+
+Pulls the distroless image from `ghcr.io/knutties/ifsc-search`, which already
+ships a pre-baked Bleve index — no `make build-index` step required:
+
+```bash
+docker run --rm -p 8080:8080 ghcr.io/knutties/ifsc-search:latest
+curl 'http://localhost:8080/healthz'
+```
+
+Mount under a sub-path with `PATH_PREFIX`:
+
+```bash
+docker run --rm -p 8080:8080 -e PATH_PREFIX=/ifsc \
+    ghcr.io/knutties/ifsc-search:latest
+```
+
+Build the same image locally instead of pulling:
+
+```bash
+docker build -t ifsc-search .
+docker run --rm -p 8080:8080 ifsc-search
 ```
 
 ## API
@@ -85,25 +113,5 @@ make test
 A multi-stage `Dockerfile` at the repo root builds a distroless image that
 ships `ifsc-search` plus a pre-baked Bleve index. The
 `.github/workflows/image.yml` workflow_dispatch publishes images to
-`ghcr.io/knutties/ifsc-search`.
-
-### Run with Docker
-
-```bash
-docker run --rm -p 8080:8080 ghcr.io/knutties/ifsc-search:latest
-curl 'http://localhost:8080/healthz'
-```
-
-Mount under a sub-path with `PATH_PREFIX`:
-
-```bash
-docker run --rm -p 8080:8080 -e PATH_PREFIX=/ifsc \
-    ghcr.io/knutties/ifsc-search:latest
-```
-
-Build and run locally instead of pulling:
-
-```bash
-docker build -t ifsc-search .
-docker run --rm -p 8080:8080 ifsc-search
-```
+`ghcr.io/knutties/ifsc-search`. See [Run the server](#run-the-server) for
+usage.
