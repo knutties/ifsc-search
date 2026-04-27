@@ -20,7 +20,7 @@ The index lands in `./index/` (gitignored) along with `version.json`.
 make run
 # IFSC_SEARCH_PORT and IFSC_SEARCH_INDEX_PATH override defaults
 # PATH_PREFIX mounts all routes under a sub-path, e.g. PATH_PREFIX=/ifsc
-# exposes /ifsc/search, /ifsc/healthz, and /ifsc/ifsc/{code}
+# exposes /ifsc/search, /ifsc/healthz, /ifsc/banks, and /ifsc/ifsc/{code}
 ```
 
 ## API
@@ -40,6 +40,25 @@ Example:
 
 ```bash
 curl 'http://localhost:8080/search?bank=HDFC&q=andheri+west&limit=5'
+```
+
+### `GET /banks`
+
+Returns the distinct list of banks present in the index, sorted by
+`bank_code`. The list is computed once on first request and cached.
+
+```bash
+curl 'http://localhost:8080/banks'
+```
+
+```json
+{
+  "total": 168,
+  "banks": [
+    {"bank_code": "ABHY", "bank_name": "Abhyudaya Co-operative Bank Limited"},
+    {"bank_code": "HDFC", "bank_name": "HDFC Bank"}
+  ]
+}
 ```
 
 ### `GET /ifsc/{code}`

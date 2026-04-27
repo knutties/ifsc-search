@@ -67,6 +67,7 @@ func newRouter(s search.Searcher, v search.Version, prefix string) http.Handler 
 	mux := http.NewServeMux()
 	mux.HandleFunc(prefix+"/search", handleSearch(s))
 	mux.HandleFunc(prefix+"/healthz", handleHealthz(s, v))
+	mux.HandleFunc("GET "+prefix+"/banks", handleListBanks(s))
 	mux.HandleFunc("GET "+prefix+"/ifsc/{code}", handleLookup(s))
 	return mux
 }
@@ -145,6 +146,21 @@ func handleLookup(s search.Searcher) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusOK, br)
+	}
+}
+
+func handleListBanks(s search.Searcher) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		banks, err := s.ListBanks()
+		if err != nil {
+			log.Printf("list banks error: %v", err)
+			writeError(w, http.StatusInternalServerError, "internal error")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"total": len(banks),
+			"banks": banks,
+		})
 	}
 }
 

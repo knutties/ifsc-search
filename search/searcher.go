@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/blevesearch/bleve/v2"
 )
@@ -11,6 +12,7 @@ import (
 type Searcher interface {
 	Search(req SearchRequest) (*SearchResults, error)
 	Lookup(code string) (*Branch, error)
+	ListBanks() ([]Bank, error)
 	DocCount() uint64
 	Close() error
 }
@@ -20,6 +22,10 @@ type Searcher interface {
 // only owns lifecycle.
 type bleveSearcher struct {
 	idx bleve.Index
+
+	banksOnce  sync.Once
+	banksCache []Bank
+	banksErr   error
 }
 
 func newBleveSearcher(idx bleve.Index) *bleveSearcher {
