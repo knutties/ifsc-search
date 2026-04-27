@@ -86,6 +86,26 @@ func TestHandleHealthz(t *testing.T) {
 	assert.Equal(t, "test", body["release_tag"])
 }
 
+func TestHandleListBanks(t *testing.T) {
+	srv := newTestServer(t)
+	resp, err := http.Get(srv.URL + "/banks")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body struct {
+		Total int           `json:"total"`
+		Banks []search.Bank `json:"banks"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, 2, body.Total)
+	require.Len(t, body.Banks, 2)
+	assert.Equal(t, "HDFC", body.Banks[0].BankCode)
+	assert.Equal(t, "HDFC Bank", body.Banks[0].BankName)
+	assert.Equal(t, "ICIC", body.Banks[1].BankCode)
+	assert.Equal(t, "ICICI Bank", body.Banks[1].BankName)
+}
+
 func TestHandleLookup_Found(t *testing.T) {
 	srv := newTestServer(t)
 	resp, err := http.Get(srv.URL + "/ifsc/HDFC0000001")

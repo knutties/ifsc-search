@@ -19,3 +19,33 @@ jobs:
           cache: true
       - run: go vet ./...
       - run: go test -tags=unit -timeout 2m ./...
+
+      - name: Smoke test built binary
+        run: |
+          set -euo pipefail
+          go build -o /tmp/ifsc-search .
+          go run ./cmd/build-index -csv ./cmd/build-index/testdata/sample.csv -out /tmp/smoke-index
+
+          IFSC_SEARCH_PORT=18080 IFSC_SEARCH_INDEX_PATH=/tmp/smoke-index /tmp/ifsc-search &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:18080/healthz >/dev/null; then
+              ready=1; break
+            fi
+            sleep 0.5
+          done
+          [ "$ready" = "1" ] || { echo "server did not become ready"; exit 1; }
+
+          curl -sf http://localhost:18080/healthz | grep -q '"status":"ok"'
+          curl -sf 'http://localhost:18080/search?bank=HDFC&q=andheri' | grep -q HDFC0000001
+          curl -sf http://localhost:18080/banks | grep -q '"bank_code":"HDFC"'
+          curl -sf http://localhost:18080/banks | grep -q '"bank_code":"SBIN"'
+          curl -sf http://localhost:18080/ifsc/HDFC0000001 | grep -q "ANDHERI WEST"
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/ifsc/ZZZZ0000000)
+          [ "$code" = "404" ] || { echo "expected 404 got $code"; exit 1; }
+
+          echo "smoke ok"

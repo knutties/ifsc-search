@@ -17,7 +17,7 @@ import (
 
 // TestEndToEnd_CSVThroughHTTP exercises the full pipeline: build a Bleve
 // index on disk from a CSV fixture, open it via search.OpenIndex, mount the
-// HTTP router, and assert that /search returns the expected branch.
+// HTTP router, and assert each public endpoint returns sensible data.
 func TestEndToEnd_CSVThroughHTTP(t *testing.T) {
 	csvPath := filepath.Join("cmd", "build-index", "testdata", "sample.csv")
 	indexDir := filepath.Join(t.TempDir(), "index")
@@ -31,15 +31,69 @@ func TestEndToEnd_CSVThroughHTTP(t *testing.T) {
 	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, ""))
 	t.Cleanup(srv.Close)
 
-	resp, err := http.Get(srv.URL + "/search?bank=HDFC&q=andheri")
-	require.NoError(t, err)
-	defer resp.Body.Close()
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	t.Run("search", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/search?bank=HDFC&q=andheri")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	var body search.SearchResults
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
-	assert.GreaterOrEqual(t, body.Total, 1)
-	assert.Equal(t, "HDFC0000001", body.Results[0].IFSC)
+		var body search.SearchResults
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.GreaterOrEqual(t, body.Total, 1)
+		assert.Equal(t, "HDFC0000001", body.Results[0].IFSC)
+	})
+
+	t.Run("healthz", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/healthz")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var body map[string]interface{}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.Equal(t, "ok", body["status"])
+		assert.Equal(t, float64(5), body["indexed_docs"])
+		assert.Equal(t, "test", body["release_tag"])
+	})
+
+	t.Run("banks", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/banks")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var body struct {
+			Total int           `json:"total"`
+			Banks []search.Bank `json:"banks"`
+		}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.Equal(t, 3, body.Total)
+		require.Len(t, body.Banks, 3)
+		assert.Equal(t, "HDFC", body.Banks[0].BankCode)
+		assert.Equal(t, "HDFC Bank", body.Banks[0].BankName)
+		assert.Equal(t, "ICIC", body.Banks[1].BankCode)
+		assert.Equal(t, "SBIN", body.Banks[2].BankCode)
+	})
+
+	t.Run("lookup_found", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/ifsc/HDFC0000001")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var body search.Branch
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.Equal(t, "HDFC0000001", body.IFSC)
+		assert.Equal(t, "ANDHERI WEST", body.Branch)
+		assert.Equal(t, "HDFC Bank", body.BankName)
+	})
+
+	t.Run("lookup_not_found", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/ifsc/ZZZZ0000000")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
 }
 
 // buildSmallIndexFromCSV mirrors what cmd/build-index does, but kept inline
