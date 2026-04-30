@@ -1,6 +1,8 @@
 name: ifsc-search image
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ifsc_tag:
