@@ -98,6 +98,15 @@ Mirrors the URL shape of the hosted `https://ifsc.razorpay.com/{code}` API.
 curl 'http://localhost:8080/ifsc/HDFC0CAGSBK'
 ```
 
+### Access logs
+
+Every served request emits one line on stdout in Apache Combined Log
+Format, e.g.:
+
+```
+::1 - - [30/Apr/2026:19:55:08 +0530] "GET /ifsc/HDFC0000001 HTTP/1.1" 200 280 "https://example.test/" "curl/8.7.1"
+```
+
 ### `GET /healthz`
 
 Lightweight liveness probe. Returns `{"status": "ok"}` and nothing else —

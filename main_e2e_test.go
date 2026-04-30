@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,7 +29,7 @@ func TestEndToEnd_CSVThroughHTTP(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 
-	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, ""))
+	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, "", io.Discard))
 	t.Cleanup(srv.Close)
 
 	t.Run("search", func(t *testing.T) {

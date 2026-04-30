@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,7 +36,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      newRouter(searcher, version, prefix),
+		Handler:      newRouter(searcher, version, prefix, os.Stdout),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
@@ -63,14 +65,75 @@ func envOr(key, fallback string) string {
 	return fallback
 }
 
-func newRouter(s search.Searcher, v search.Version, prefix string) http.Handler {
+func newRouter(s search.Searcher, v search.Version, prefix string, accessLog io.Writer) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc(prefix+"/search", handleSearch(s))
 	mux.HandleFunc(prefix+"/healthz", handleHealthz())
 	mux.HandleFunc(prefix+"/status", handleStatus(s, v))
 	mux.HandleFunc("GET "+prefix+"/list", handleListBanks(s))
 	mux.HandleFunc("GET "+prefix+"/ifsc/{code}", handleLookup(s))
-	return mux
+	if accessLog == nil {
+		return mux
+	}
+	return withAccessLog(mux, log.New(accessLog, "", 0))
+}
+
+// withAccessLog wraps next so each served request emits a single line in
+// Apache Combined Log Format to logger:
+//
+//	%h - - [%t] "%r" %>s %b "%{Referer}i" "%{User-Agent}i"
+func withAccessLog(next http.Handler, logger *log.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, r)
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil || host == "" {
+			host = r.RemoteAddr
+		}
+		if host == "" {
+			host = "-"
+		}
+		ref := r.Header.Get("Referer")
+		if ref == "" {
+			ref = "-"
+		}
+		ua := r.Header.Get("User-Agent")
+		if ua == "" {
+			ua = "-"
+		}
+		logger.Printf(`%s - - [%s] "%s %s %s" %d %d "%s" "%s"`,
+			host,
+			start.Format("02/Jan/2006:15:04:05 -0700"),
+			r.Method, r.URL.RequestURI(), r.Proto,
+			rec.status, rec.bytes, ref, ua,
+		)
+	})
+}
+
+type statusRecorder struct {
+	http.ResponseWriter
+	status      int
+	bytes       int
+	wroteHeader bool
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	if r.wroteHeader {
+		return
+	}
+	r.status = code
+	r.wroteHeader = true
+	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Write(b []byte) (int, error) {
+	if !r.wroteHeader {
+		r.WriteHeader(http.StatusOK)
+	}
+	n, err := r.ResponseWriter.Write(b)
+	r.bytes += n
+	return n, err
 }
 
 // normalizePrefix returns "" for empty input, otherwise ensures a single

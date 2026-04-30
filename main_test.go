@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/knutties/ifsc-search/search"
@@ -26,7 +29,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 	t.Cleanup(func() { _ = s.Close() })
 
 	srv := httptest.NewServer(newRouter(s, search.Version{
-		Tag: "test", BuiltAt: "2026-04-26T00:00:00Z"}, ""))
+		Tag: "test", BuiltAt: "2026-04-26T00:00:00Z"}, "", io.Discard))
 	t.Cleanup(srv.Close)
 	return srv
 }
@@ -159,7 +162,7 @@ func TestRouter_PathPrefix(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 
-	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, "/ifsc"))
+	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, "/ifsc", io.Discard))
 	t.Cleanup(srv.Close)
 
 	resp, err := http.Get(srv.URL + "/ifsc/search?bank=HDFC&q=andheri")
@@ -197,4 +200,58 @@ func TestNormalizePrefix(t *testing.T) {
 	for in, want := range cases {
 		assert.Equal(t, want, normalizePrefix(in), "input=%q", in)
 	}
+}
+
+func TestAccessLog_CombinedFormat(t *testing.T) {
+	branches := []*search.Branch{
+		{IFSC: "HDFC0000001", BankCode: "HDFC", BankName: "HDFC Bank",
+			Branch: "ANDHERI WEST", City: "MUMBAI", State: "MAHARASHTRA"},
+	}
+	s, err := search.NewMemorySearcher(branches)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+
+	var buf bytes.Buffer
+	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, "", &buf))
+	t.Cleanup(srv.Close)
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/ifsc/HDFC0000001", nil)
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "test-agent/1.0")
+	req.Header.Set("Referer", "https://example.test/page")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	line := buf.String()
+	pattern := `^127\.0\.0\.1 - - \[\d{2}/[A-Z][a-z]{2}/\d{4}:\d{2}:\d{2}:\d{2} [-+]\d{4}\] ` +
+		`"GET /ifsc/HDFC0000001 HTTP/1\.1" 200 \d+ ` +
+		`"https://example\.test/page" "test-agent/1\.0"\n$`
+	assert.Regexp(t, regexp.MustCompile(pattern), line, "log line: %q", line)
+}
+
+func TestAccessLog_404StatusAndDashes(t *testing.T) {
+	branches := []*search.Branch{
+		{IFSC: "HDFC0000001", BankCode: "HDFC", BankName: "HDFC Bank",
+			Branch: "ANDHERI WEST", City: "MUMBAI", State: "MAHARASHTRA"},
+	}
+	s, err := search.NewMemorySearcher(branches)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+
+	var buf bytes.Buffer
+	srv := httptest.NewServer(newRouter(s, search.Version{Tag: "test"}, "", &buf))
+	t.Cleanup(srv.Close)
+
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/ifsc/ZZZZ0000000", nil)
+	require.NoError(t, err)
+	req.Header.Set("User-Agent", "")
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	line := buf.String()
+	assert.Contains(t, line, `"GET /ifsc/ZZZZ0000000 HTTP/1.1" 404 `)
+	assert.Contains(t, line, `"-" "-"`,
+		"missing referer and user-agent both render as -")
 }
