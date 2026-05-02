@@ -30,7 +30,7 @@ export const getRuntimeConfig = (config: BankSearchClientConfig) => {
     bodyLengthChecker: config?.bodyLengthChecker ?? calculateBodyLength,
     defaultUserAgentProvider: config?.defaultUserAgentProvider ?? createDefaultUserAgentProvider({serviceId: clientSharedValues.serviceId, clientVersion: packageInfo.version}),
     maxAttempts: config?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS,
-    region: config?.region ?? invalidProvider("Region is missing"),
+    region: config?.region ?? "auto",
     requestHandler: RequestHandler.create(config?.requestHandler ?? defaultConfigProvider),
     retryMode: config?.retryMode ?? (async () => (await defaultConfigProvider()).retryMode || DEFAULT_RETRY_MODE),
     sha256: config?.sha256 ?? Sha256,

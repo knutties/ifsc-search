@@ -45,6 +45,7 @@ smithy-publish: smithy-build
 	cp LICENSE clients/typescript/LICENSE
 	jq '.license = "MIT"' clients/typescript/package.json > clients/typescript/package.json.tmp \
 	  && mv clients/typescript/package.json.tmp clients/typescript/package.json
+	node smithy/scripts/patch-runtime-config.mjs
 
 smithy-clean:
 	rm -rf smithy/build

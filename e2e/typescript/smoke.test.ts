@@ -14,10 +14,7 @@ import {
 
 const baseUrl = process.env.BANK_SEARCH_E2E_BASE_URL ?? "http://localhost:8080";
 
-// `region` is unused by the bank-search service but the AWS-flavored SDK
-// runtime resolves region eagerly from config providers and throws
-// "Region is missing" if none is found, even when `endpoint` is overridden.
-const client = new BankSearchClient({ endpoint: baseUrl, region: "local" });
+const client = new BankSearchClient({ endpoint: baseUrl });
 
 suite("bank-search e2e via SDK", () => {
     test("healthz returns ok", async () => {
