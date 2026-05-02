@@ -1,4 +1,4 @@
-# ifsc-search
+# bank-search
 
 A self-contained HTTP service for locating Indian bank branches by bank plus a
 fuzzy free-text query over branch name, address, and city. Built on a Bleve
@@ -22,18 +22,18 @@ Builds the binary locally and serves the index in `./index/`:
 
 ```bash
 make run
-# IFSC_SEARCH_PORT and IFSC_SEARCH_INDEX_PATH override defaults
+# BANK_SEARCH_PORT and BANK_SEARCH_INDEX_PATH override defaults
 # PATH_PREFIX mounts all routes under a sub-path, e.g. PATH_PREFIX=/ifsc
 # exposes /ifsc/search, /ifsc/healthz, /ifsc/status, /ifsc/list, and /ifsc/ifsc/{code}
 ```
 
 ### From the published GHCR image
 
-Pulls the distroless image from `ghcr.io/knutties/ifsc-search`, which already
+Pulls the distroless image from `ghcr.io/knutties/bank-search`, which already
 ships a pre-baked Bleve index — no `make build-index` step required:
 
 ```bash
-docker run --rm -p 8080:8080 ghcr.io/knutties/ifsc-search:latest
+docker run --rm -p 8080:8080 ghcr.io/knutties/bank-search:latest
 curl 'http://localhost:8080/healthz'
 ```
 
@@ -41,14 +41,14 @@ Mount under a sub-path with `PATH_PREFIX`:
 
 ```bash
 docker run --rm -p 8080:8080 -e PATH_PREFIX=/ifsc \
-    ghcr.io/knutties/ifsc-search:latest
+    ghcr.io/knutties/bank-search:latest
 ```
 
 Build the same image locally instead of pulling:
 
 ```bash
-docker build -t ifsc-search .
-docker run --rm -p 8080:8080 ifsc-search
+docker build -t bank-search .
+docker run --rm -p 8080:8080 bank-search
 ```
 
 ## API
@@ -147,7 +147,7 @@ make test
 ## Container image
 
 A multi-stage `Dockerfile` at the repo root builds a distroless image that
-ships `ifsc-search` plus a pre-baked Bleve index. The
+ships `bank-search` plus a pre-baked Bleve index. The
 `.github/workflows/image.yml` workflow_dispatch publishes images to
-`ghcr.io/knutties/ifsc-search`. See [Run the server](#run-the-server) for
+`ghcr.io/knutties/bank-search`. See [Run the server](#run-the-server) for
 usage.

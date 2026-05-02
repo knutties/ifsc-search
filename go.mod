@@ -1,4 +1,4 @@
-module github.com/knutties/ifsc-search
+module github.com/knutties/bank-search
 
 go 1.23
 

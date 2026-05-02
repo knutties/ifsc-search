@@ -1,4 +1,4 @@
-// Package search owns the Bleve index used by the ifsc-search HTTP service.
+// Package search owns the Bleve index used by the bank-search HTTP service.
 package search
 
 import (

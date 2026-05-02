@@ -1,4 +1,4 @@
-name: ifsc-search image
+name: bank-search image
 
 on:
   push:
@@ -41,10 +41,10 @@ jobs:
           build-args: |
             IFSC_TAG=${{ inputs.ifsc_tag }}
           tags: |
-            ghcr.io/knutties/ifsc-search:${{ steps.ver.outputs.tag }}
-            ghcr.io/knutties/ifsc-search:latest
+            ghcr.io/knutties/bank-search:${{ steps.ver.outputs.tag }}
+            ghcr.io/knutties/bank-search:latest
           labels: |
-            org.opencontainers.image.title=ifsc-search
+            org.opencontainers.image.title=bank-search
             org.opencontainers.image.description=Self-contained HTTP search service for Indian bank branches by IFSC, built on a Bleve index over the razorpay/ifsc CSV release.
             org.opencontainers.image.url=https://github.com/${{ github.repository }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}

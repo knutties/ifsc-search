@@ -16,13 +16,13 @@ import (
 	"time"
 
 	"github.com/blevesearch/bleve/v2"
-	"github.com/knutties/ifsc-search/search"
+	"github.com/knutties/bank-search/search"
 )
 
 const (
 	githubAPI     = "https://api.github.com/repos/razorpay/ifsc/releases"
 	batchSize     = 1000
-	httpUserAgent = "ifsc-search-build-index/1.0"
+	httpUserAgent = "bank-search-build-index/1.0"
 )
 
 func main() {
