@@ -57,17 +57,31 @@ docker run --rm -p 8080:8080 ifsc-search
 
 Query params:
 
-| Name     | Required        | Notes                                          |
-| -------- | --------------- | ---------------------------------------------- |
-| `bank`   | one of bank/q   | 4-char IFSC bank code or fuzzy bank name       |
-| `q`      | one of bank/q   | free-text over branch, city, address           |
-| `limit`  | no              | default 20, max 100                            |
-| `offset` | no              | default 0                                      |
+| Name       | Required | Notes                                                   |
+| ---------- | -------- | ------------------------------------------------------- |
+| `bank`     | one of * | 4-char IFSC bank code or fuzzy bank name                |
+| `q`        | one of * | free-text over branch, city, address, IFSC prefix       |
+| `ifsc`     | one of * | case-insensitive IFSC prefix, e.g. `HDFC0CAG`           |
+| `state`    | one of * | strict, case-insensitive (`Maharashtra`, `West Bengal`) |
+| `district` | one of * | strict, case-insensitive                                |
+| `city`     | one of * | strict, case-insensitive (no substring false-positives) |
+| `limit`    | no       | default 20, max 100                                     |
+| `offset`   | no       | default 0                                               |
+
+\* at least one of `bank`, `q`, `ifsc`, `state`, `district`, `city` is
+required. When more than one is supplied they AND-combine: e.g.
+`bank=HDFC&state=Maharashtra&q=andheri` narrows to HDFC branches in
+Maharashtra matching "andheri".
+
+Strict filters (`state`, `district`, `city`) are exact-match against the
+indexed value — `city=Mumbai` will not bleed into "Navi Mumbai".
 
 Example:
 
 ```bash
 curl 'http://localhost:8080/search?bank=HDFC&q=andheri+west&limit=5'
+curl 'http://localhost:8080/search?ifsc=HDFC0CAG'
+curl 'http://localhost:8080/search?bank=HDFC&city=Mumbai'
 ```
 
 ### `GET /list`

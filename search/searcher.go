@@ -62,7 +62,7 @@ func NewMemorySearcher(branches []*Branch) (Searcher, error) {
 	}
 	batch := idx.NewBatch()
 	for _, b := range branches {
-		if err := batch.Index(b.IFSC, b); err != nil {
+		if err := IndexBranch(batch, b); err != nil {
 			return nil, fmt.Errorf("index %s: %w", b.IFSC, err)
 		}
 	}

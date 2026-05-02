@@ -3,6 +3,8 @@ package search
 import (
 	"fmt"
 	"strings"
+
+	"github.com/blevesearch/bleve/v2"
 )
 
 // Branch is the indexed and returned representation of one IFSC record.
@@ -90,3 +92,53 @@ func parseBool(s string) bool {
 		return false
 	}
 }
+
+// newIndexDoc returns a flat map containing every Branch field plus the
+// lowercased keyword companion fields (state_key, district_key, city_key,
+// ifsc_key) used by strict-equality filters. The map shape is used instead
+// of an embedded struct because Bleve's reflection-based document walker
+// does not promote anonymous embedded struct fields.
+func newIndexDoc(b *Branch) map[string]interface{} {
+	return map[string]interface{}{
+		"ifsc":         b.IFSC,
+		"bank_code":    b.BankCode,
+		"bank_name":    b.BankName,
+		"branch":       b.Branch,
+		"centre":       b.Centre,
+		"district":     b.District,
+		"state":        b.State,
+		"address":      b.Address,
+		"city":         b.City,
+		"contact":      b.Contact,
+		"micr":         b.MICR,
+		"swift":        b.SWIFT,
+		"upi":          b.UPI,
+		"neft":         b.NEFT,
+		"rtgs":         b.RTGS,
+		"imps":         b.IMPS,
+		"state_key":    strings.ToLower(b.State),
+		"district_key": strings.ToLower(b.District),
+		"city_key":     strings.ToLower(b.City),
+		"ifsc_key":     strings.ToLower(b.IFSC),
+	}
+}
+
+// IndexBranch indexes b into target (a bleve.Index or bleve.Batch) using the
+// IFSC code as the document id. Callers should prefer this helper over
+// passing a bare *Branch so that strict-equality filter fields are
+// populated.
+func IndexBranch(target indexTarget, b *Branch) error {
+	return target.Index(b.IFSC, newIndexDoc(b))
+}
+
+// indexTarget is satisfied by both bleve.Index and bleve.Batch — they share
+// the Index(id, data) shape.
+type indexTarget interface {
+	Index(id string, data interface{}) error
+}
+
+// compile-time guards: bleve.Index and bleve.Batch must satisfy indexTarget.
+var (
+	_ indexTarget = (bleve.Index)(nil)
+	_ indexTarget = (*bleve.Batch)(nil)
+)

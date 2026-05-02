@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/blevesearch/bleve/v2"
@@ -42,6 +43,42 @@ func TestEndToEnd_CSVThroughHTTP(t *testing.T) {
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
 		assert.GreaterOrEqual(t, body.Total, 1)
 		assert.Equal(t, "HDFC0000001", body.Results[0].IFSC)
+	})
+
+	t.Run("search_ifsc_prefix", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/search?ifsc=HDFC0")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		var body search.SearchResults
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		assert.Equal(t, 3, body.Total, "sample.csv has three HDFC rows")
+		for _, r := range body.Results {
+			assert.True(t, strings.HasPrefix(r.IFSC, "HDFC0"), "got %s", r.IFSC)
+		}
+	})
+
+	t.Run("search_state_filter", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/search?state=Karnataka")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		var body search.SearchResults
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		require.Equal(t, 1, body.Total)
+		assert.Equal(t, "HDFC0000003", body.Results[0].IFSC)
+	})
+
+	t.Run("search_city_filter", func(t *testing.T) {
+		resp, err := http.Get(srv.URL + "/search?city=Bangalore")
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		var body search.SearchResults
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+		require.Equal(t, 1, body.Total)
+		assert.Equal(t, "HDFC0000003", body.Results[0].IFSC)
 	})
 
 	t.Run("healthz", func(t *testing.T) {
@@ -144,7 +181,7 @@ func buildSmallIndexFromCSV(t *testing.T, csvPath, indexDir string) error {
 		if err != nil {
 			continue
 		}
-		if err := idx.Index(b.IFSC, b); err != nil {
+		if err := search.IndexBranch(idx, b); err != nil {
 			return err
 		}
 	}

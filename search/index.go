@@ -31,6 +31,11 @@ func FieldBoost(f *mapping.FieldMapping) float64 {
 func NewIndexMapping() *mapping.IndexMappingImpl {
 	im := bleve.NewIndexMapping()
 	im.DefaultAnalyzer = "standard"
+	// Untyped documents fall back to the "branch" mapping declared below.
+	// Without this, the registered field mappings (notably the keyword
+	// analyzer pinned on *_key fields) are silently ignored and Bleve
+	// auto-detects everything via the standard analyzer.
+	im.DefaultType = DocType
 
 	branch := bleve.NewDocumentMapping()
 
@@ -49,6 +54,21 @@ func NewIndexMapping() *mapping.IndexMappingImpl {
 		f.Name = name
 		f.Store = true
 		f.Index = false
+		branch.AddFieldMappingsAt(name, f)
+	}
+
+	// Lowercased keyword companion fields used by strict-equality filters
+	// (state/district/city) and the IFSC prefix filter. Populated by the
+	// indexDoc wrapper so the public Branch JSON contract stays unchanged.
+	// Analyzer is pinned to "keyword" so multi-word values like
+	// "west bengal" stay as a single indexed term rather than being
+	// tokenized by the index-level "standard" default.
+	for _, name := range []string{"state_key", "district_key", "city_key", "ifsc_key"} {
+		f := bleve.NewKeywordFieldMapping()
+		f.Name = name
+		f.Analyzer = "keyword"
+		f.Store = false
+		f.Index = true
 		branch.AddFieldMappingsAt(name, f)
 	}
 

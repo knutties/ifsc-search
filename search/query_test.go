@@ -2,6 +2,7 @@ package search
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,22 +14,33 @@ func fixtureBranches() []*Branch {
 	return []*Branch{
 		{IFSC: "HDFC0000001", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "ANDHERI WEST", City: "MUMBAI", Address: "S V ROAD",
-			State: "MAHARASHTRA"},
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
 		{IFSC: "HDFC0000002", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "ANDHERI EAST", City: "MUMBAI", Address: "CHAKALA",
-			State: "MAHARASHTRA"},
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
 		{IFSC: "HDFC0000003", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "BANDRA", City: "MUMBAI", Address: "LINKING ROAD",
-			State: "MAHARASHTRA"},
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
 		{IFSC: "ICIC0000001", BankCode: "ICIC", BankName: "ICICI Bank",
 			Branch: "ANDHERI WEST", City: "MUMBAI", Address: "JUHU LANE",
-			State: "MAHARASHTRA"},
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
 		{IFSC: "SBIN0000001", BankCode: "SBIN", BankName: "State Bank of India",
 			Branch: "KOREGAON PARK", City: "PUNE", Address: "NORTH MAIN ROAD",
-			State: "MAHARASHTRA"},
+			District: "PUNE", State: "MAHARASHTRA"},
 		{IFSC: "HDFC0000004", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "ANDHERI NORTH", City: "MUMBAI", Address: "ANDHERI MAIN ROAD",
-			State: "MAHARASHTRA"},
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
+		// Extra rows that vary state/district/city so strict-equality
+		// filters can be exercised without extra setup.
+		{IFSC: "SBIN0000002", BankCode: "SBIN", BankName: "State Bank of India",
+			Branch: "VASHI", City: "NAVI MUMBAI", Address: "PALM BEACH ROAD",
+			District: "THANE", State: "MAHARASHTRA"},
+		{IFSC: "SBIN0000003", BankCode: "SBIN", BankName: "State Bank of India",
+			Branch: "MG ROAD", City: "BANGALORE", Address: "MG ROAD",
+			District: "BANGALORE URBAN", State: "KARNATAKA"},
+		{IFSC: "SBIN0000004", BankCode: "SBIN", BankName: "State Bank of India",
+			Branch: "PARK STREET", City: "KOLKATA", Address: "PARK STREET",
+			District: "KOLKATA", State: "WEST BENGAL"},
 	}
 }
 
@@ -135,4 +147,105 @@ func TestSearch_PaginationOffsetAndTotal(t *testing.T) {
 	if len(res2.Results) > 0 {
 		assert.NotEqual(t, res.Results[0].IFSC, res2.Results[0].IFSC)
 	}
+}
+
+func TestSearchRequest_Validate_AcceptsAnyOneSignal(t *testing.T) {
+	for name, req := range map[string]SearchRequest{
+		"ifsc":     {IFSCPrefix: "HDFC0"},
+		"state":    {State: "Maharashtra"},
+		"district": {District: "Mumbai Suburban"},
+		"city":     {City: "Mumbai"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, req.Validate())
+		})
+	}
+}
+
+func TestSearch_IFSCPrefix_Matches(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{IFSCPrefix: "HDFC0"})
+	require.NoError(t, err)
+	assert.Equal(t, 4, res.Total, "all four HDFC branches should match")
+	for _, r := range res.Results {
+		assert.True(t, strings.HasPrefix(r.IFSC, "HDFC0"), "got %s", r.IFSC)
+	}
+}
+
+func TestSearch_IFSCPrefix_CaseInsensitive(t *testing.T) {
+	s := newTestSearcher(t)
+	upper, err := s.Search(SearchRequest{IFSCPrefix: "SBIN0"})
+	require.NoError(t, err)
+	lower, err := s.Search(SearchRequest{IFSCPrefix: "sbin0"})
+	require.NoError(t, err)
+	assert.Equal(t, upper.Total, lower.Total)
+	assert.Greater(t, upper.Total, 0)
+}
+
+func TestSearch_City_StrictDoesNotMatchNaviMumbai(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{City: "Mumbai"})
+	require.NoError(t, err)
+	for _, r := range res.Results {
+		assert.Equal(t, "MUMBAI", r.City,
+			"city=Mumbai must not bleed into NAVI MUMBAI: got %s", r.City)
+	}
+	// Five Mumbai-proper branches in the fixture; SBIN0000002 (Navi Mumbai)
+	// must be excluded.
+	assert.Equal(t, 5, res.Total)
+}
+
+func TestSearch_State_SingleWordExact(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{State: "Karnataka"})
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Total)
+	assert.Equal(t, "SBIN0000003", res.Results[0].IFSC)
+}
+
+func TestSearch_State_MultiWordExact(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{State: "West Bengal"})
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Total, "multi-word state must resolve via keyword field, not tokenized text")
+	assert.Equal(t, "SBIN0000004", res.Results[0].IFSC)
+}
+
+func TestSearch_District_MultiWord(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{District: "Bangalore Urban"})
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Total)
+	assert.Equal(t, "SBIN0000003", res.Results[0].IFSC)
+}
+
+func TestSearch_Q_MatchesIFSCCode(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{Q: "HDFC0000003"})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, res.Total, 1)
+	assert.Equal(t, "HDFC0000003", res.Results[0].IFSC,
+		"q with a full IFSC must surface that branch first")
+}
+
+func TestSearch_Q_MatchesIFSCPrefixCaseInsensitive(t *testing.T) {
+	s := newTestSearcher(t)
+	res, err := s.Search(SearchRequest{Q: "sbin0"})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, res.Total, 4, "all four SBIN branches should surface via q prefix")
+	for _, r := range res.Results[:4] {
+		assert.True(t, strings.HasPrefix(r.IFSC, "SBIN"), "got %s", r.IFSC)
+	}
+}
+
+func TestSearch_FilterCombinations_AndSemantics(t *testing.T) {
+	s := newTestSearcher(t)
+	// HDFC + Mumbai → 4. HDFC + Karnataka → 0 (HDFC has no Karnataka branch).
+	hdfcMumbai, err := s.Search(SearchRequest{Bank: "HDFC", City: "Mumbai"})
+	require.NoError(t, err)
+	assert.Equal(t, 4, hdfcMumbai.Total)
+
+	hdfcKarnataka, err := s.Search(SearchRequest{Bank: "HDFC", State: "Karnataka"})
+	require.NoError(t, err)
+	assert.Equal(t, 0, hdfcKarnataka.Total)
 }

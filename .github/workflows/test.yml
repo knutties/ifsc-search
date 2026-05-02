@@ -42,11 +42,17 @@ jobs:
           curl -sf http://localhost:18080/healthz | grep -q '"status":"ok"'
           curl -sf http://localhost:18080/status | grep -q '"indexed_docs":'
           curl -sf 'http://localhost:18080/search?bank=HDFC&q=andheri' | grep -q HDFC0000001
+          curl -sf 'http://localhost:18080/search?ifsc=HDFC0' | grep -q HDFC0000001
+          curl -sf 'http://localhost:18080/search?state=Karnataka' | grep -q HDFC0000003
+          curl -sf 'http://localhost:18080/search?city=Bangalore' | grep -q HDFC0000003
           curl -sf http://localhost:18080/list | grep -q '"bank_code":"HDFC"'
           curl -sf http://localhost:18080/list | grep -q '"bank_code":"SBIN"'
           curl -sf http://localhost:18080/ifsc/HDFC0000001 | grep -q "ANDHERI WEST"
 
           code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/ifsc/ZZZZ0000000)
           [ "$code" = "404" ] || { echo "expected 404 got $code"; exit 1; }
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/search)
+          [ "$code" = "400" ] || { echo "expected 400 for empty search got $code"; exit 1; }
 
           echo "smoke ok"

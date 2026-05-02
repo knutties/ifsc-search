@@ -18,19 +18,32 @@ const (
 )
 
 var (
-	ErrMissingQuery  = errors.New("at least one of bank or q is required")
+	ErrMissingQuery  = errors.New("at least one of bank, q, ifsc, state, district, city is required")
 	ErrBadPagination = errors.New("invalid pagination")
 )
 
 type SearchRequest struct {
-	Bank   string
-	Q      string
-	Limit  int
-	Offset int
+	Bank       string
+	Q          string
+	IFSCPrefix string
+	State      string
+	District   string
+	City       string
+	Limit      int
+	Offset     int
+}
+
+func (r *SearchRequest) hasSignal() bool {
+	for _, v := range []string{r.Bank, r.Q, r.IFSCPrefix, r.State, r.District, r.City} {
+		if strings.TrimSpace(v) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *SearchRequest) Validate() error {
-	if strings.TrimSpace(r.Bank) == "" && strings.TrimSpace(r.Q) == "" {
+	if !r.hasSignal() {
 		return ErrMissingQuery
 	}
 	if r.Offset < 0 {
@@ -84,11 +97,14 @@ func (b *bleveSearcher) Search(req SearchRequest) (*SearchResults, error) {
 		}, nil
 	}
 
-	q := buildQuery(bankCode, req.Q)
+	q := buildQuery(bankCode, req)
 
 	sr := bleve.NewSearchRequestOptions(q, req.Limit, req.Offset, false)
 	sr.Fields = []string{"*"}
-	if req.Bank != "" && strings.TrimSpace(req.Q) == "" {
+	// Stable alpha sort whenever there is no free-text query — the new
+	// strict filters are equivalent to "narrow then list" and benefit from
+	// deterministic ordering.
+	if strings.TrimSpace(req.Q) == "" {
 		sr.SortBy([]string{"branch"})
 	}
 
@@ -155,8 +171,7 @@ func (b *bleveSearcher) resolveBank(input string) (string, bool, error) {
 	return code, true, nil
 }
 
-func buildQuery(bankCode, q string) query.Query {
-	q = strings.TrimSpace(q)
+func buildQuery(bankCode string, req SearchRequest) query.Query {
 	conj := bleve.NewConjunctionQuery()
 
 	if bankCode != "" {
@@ -167,11 +182,37 @@ func buildQuery(bankCode, q string) query.Query {
 		conj.AddQuery(bq)
 	}
 
-	if q != "" {
+	if pfx := strings.TrimSpace(req.IFSCPrefix); pfx != "" {
+		pq := bleve.NewPrefixQuery(strings.ToLower(pfx))
+		pq.SetField("ifsc_key")
+		conj.AddQuery(pq)
+	}
+
+	for _, f := range []struct {
+		field, value string
+	}{
+		{"state_key", req.State},
+		{"district_key", req.District},
+		{"city_key", req.City},
+	} {
+		v := strings.TrimSpace(f.value)
+		if v == "" {
+			continue
+		}
+		tq := bleve.NewTermQuery(strings.ToLower(v))
+		tq.SetField(f.field)
+		conj.AddQuery(tq)
+	}
+
+	if q := strings.TrimSpace(req.Q); q != "" {
 		conj.AddQuery(textQuery(q))
-	} else if bankCode == "" {
-		// Internal invariant: Search() validates before calling buildQuery.
-		panic("buildQuery called with empty bankCode and q — Validate() bypassed")
+	}
+
+	// Internal invariant: Search() validates before calling buildQuery, so
+	// at least one clause must be present. A bare conjunction with zero
+	// clauses would otherwise match every document.
+	if len(conj.Conjuncts) == 0 {
+		panic("buildQuery called with no clauses — Validate() bypassed")
 	}
 	return conj
 }
@@ -194,6 +235,15 @@ func textQuery(q string) query.Query {
 			mq.SetBoost(boost * 2) // exact match outranks fuzzy
 			disj.AddQuery(mq)
 		}
+
+		// Treat tokens that look like an IFSC (or its prefix) as a hit
+		// against the doc's IFSC. Lets a user paste a code into the
+		// generic q box and find the branch without knowing about the
+		// dedicated `ifsc` param.
+		ipq := bleve.NewPrefixQuery(tok)
+		ipq.SetField("ifsc_key")
+		ipq.SetBoost(4.0) // outrank fuzzy text matches
+		disj.AddQuery(ipq)
 	}
 	return disj
 }

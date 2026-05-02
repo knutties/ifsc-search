@@ -117,7 +117,7 @@ func buildIndexFromCSV(csvPath, indexDir string) (int, error) {
 			log.Printf("skipping row: %v", err)
 			continue
 		}
-		if err := batch.Index(b.IFSC, b); err != nil {
+		if err := search.IndexBranch(batch, b); err != nil {
 			return 0, fmt.Errorf("index %s: %w", b.IFSC, err)
 		}
 		count++

@@ -16,14 +16,18 @@ import (
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	branches := []*search.Branch{
+	return newServerWith(t, []*search.Branch{
 		{IFSC: "HDFC0000001", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "ANDHERI WEST", City: "MUMBAI", State: "MAHARASHTRA"},
 		{IFSC: "HDFC0000002", BankCode: "HDFC", BankName: "HDFC Bank",
 			Branch: "BANDRA", City: "MUMBAI", State: "MAHARASHTRA"},
 		{IFSC: "ICIC0000001", BankCode: "ICIC", BankName: "ICICI Bank",
 			Branch: "ANDHERI EAST", City: "MUMBAI", State: "MAHARASHTRA"},
-	}
+	})
+}
+
+func newServerWith(t *testing.T, branches []*search.Branch) *httptest.Server {
+	t.Helper()
 	s, err := search.NewMemorySearcher(branches)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
@@ -56,7 +60,7 @@ func TestHandleSearch_MissingParams_400(t *testing.T) {
 
 	var body map[string]string
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
-	assert.Contains(t, body["error"], "at least one of bank or q is required")
+	assert.Contains(t, body["error"], "at least one of bank, q, ifsc, state, district, city is required")
 }
 
 func TestHandleSearch_NegativeOffset_400(t *testing.T) {
@@ -73,6 +77,71 @@ func TestHandleSearch_NonIntegerLimit_400(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+}
+
+func filterFixture() []*search.Branch {
+	return []*search.Branch{
+		{IFSC: "HDFC0000001", BankCode: "HDFC", BankName: "HDFC Bank",
+			Branch: "ANDHERI WEST", City: "MUMBAI",
+			District: "MUMBAI SUBURBAN", State: "MAHARASHTRA"},
+		{IFSC: "SBIN0000001", BankCode: "SBIN", BankName: "State Bank of India",
+			Branch: "VASHI", City: "NAVI MUMBAI",
+			District: "THANE", State: "MAHARASHTRA"},
+		{IFSC: "SBIN0000002", BankCode: "SBIN", BankName: "State Bank of India",
+			Branch: "MG ROAD", City: "BANGALORE",
+			District: "BANGALORE URBAN", State: "KARNATAKA"},
+	}
+}
+
+func TestHandleSearch_IFSCPrefix(t *testing.T) {
+	srv := newServerWith(t, filterFixture())
+	resp, err := http.Get(srv.URL + "/search?ifsc=SBIN0")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body search.SearchResults
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	assert.Equal(t, 2, body.Total)
+	for _, r := range body.Results {
+		assert.Equal(t, "SBIN", r.BankCode)
+	}
+}
+
+func TestHandleSearch_StateFilter(t *testing.T) {
+	srv := newServerWith(t, filterFixture())
+	resp, err := http.Get(srv.URL + "/search?state=Karnataka")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var body search.SearchResults
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	require.Equal(t, 1, body.Total)
+	assert.Equal(t, "SBIN0000002", body.Results[0].IFSC)
+}
+
+func TestHandleSearch_CityFilter_NoNaviMumbaiBleed(t *testing.T) {
+	srv := newServerWith(t, filterFixture())
+	resp, err := http.Get(srv.URL + "/search?city=Mumbai")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var body search.SearchResults
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	require.Equal(t, 1, body.Total, "city=Mumbai must not match NAVI MUMBAI")
+	assert.Equal(t, "HDFC0000001", body.Results[0].IFSC)
+}
+
+func TestHandleSearch_DistrictFilter_MultiWord(t *testing.T) {
+	srv := newServerWith(t, filterFixture())
+	resp, err := http.Get(srv.URL + "/search?district=Bangalore+Urban")
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	var body search.SearchResults
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
+	require.Equal(t, 1, body.Total)
+	assert.Equal(t, "SBIN0000002", body.Results[0].IFSC)
 }
 
 func TestHandleHealthz(t *testing.T) {
