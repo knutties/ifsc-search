@@ -144,6 +144,20 @@ curl 'http://localhost:8080/status'
 make test
 ```
 
+## Development environment
+
+A `flake.nix` ships a reproducible dev shell with Go, `gopls`,
+`golangci-lint`, `gh`, and `jq` pinned via `nixpkgs`:
+
+```bash
+nix develop          # one-off shell
+direnv allow         # auto-activate via the included .envrc
+```
+
+The flake pins Go 1.25 (currently supported upstream); the project's
+`go.mod` still declares `go 1.23` for compatibility with the CI image
+and Dockerfile. Newer toolchains build older modules without changes.
+
 ## Container image
 
 A multi-stage `Dockerfile` at the repo root builds a distroless image that
