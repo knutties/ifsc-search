@@ -23,10 +23,10 @@ jobs:
       - name: Smoke test built binary
         run: |
           set -euo pipefail
-          go build -o /tmp/ifsc-search .
+          go build -o /tmp/bank-search .
           go run ./cmd/build-index -csv ./cmd/build-index/testdata/sample.csv -out /tmp/smoke-index
 
-          IFSC_SEARCH_PORT=18080 IFSC_SEARCH_INDEX_PATH=/tmp/smoke-index /tmp/ifsc-search &
+          BANK_SEARCH_PORT=18080 BANK_SEARCH_INDEX_PATH=/tmp/smoke-index /tmp/bank-search &
           server_pid=$!
           trap 'kill $server_pid 2>/dev/null || true' EXIT
 

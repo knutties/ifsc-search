@@ -15,12 +15,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/knutties/ifsc-search/search"
+	"github.com/knutties/bank-search/search"
 )
 
 func main() {
-	port := envOr("IFSC_SEARCH_PORT", "8080")
-	indexPath := envOr("IFSC_SEARCH_INDEX_PATH", "./index")
+	port := envOr("BANK_SEARCH_PORT", "8080")
+	indexPath := envOr("BANK_SEARCH_INDEX_PATH", "./index")
 	prefix := normalizePrefix(os.Getenv("PATH_PREFIX"))
 
 	searcher, err := search.OpenIndex(indexPath)
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("ifsc-search listening on :%s (index=%s, docs=%d, prefix=%q)",
+		log.Printf("bank-search listening on :%s (index=%s, docs=%d, prefix=%q)",
 			port, indexPath, searcher.DocCount(), prefix)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)

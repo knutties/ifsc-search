@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/knutties/ifsc-search/search"
+	"github.com/knutties/bank-search/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
