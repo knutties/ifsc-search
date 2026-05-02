@@ -7,5 +7,13 @@ result
 result-*
 .direnv/
 
-# Smithy build outputs (committed copies live under api/)
+# Smithy build outputs (committed copies live under api/ and clients/)
 smithy/build/
+
+# TypeScript client build/install artifacts
+clients/typescript/node_modules/
+clients/typescript/dist-cjs/
+clients/typescript/dist-es/
+clients/typescript/dist-types/
+clients/typescript/*.tsbuildinfo
+clients/typescript/package-lock.json

@@ -19,6 +19,7 @@
             gh
             jq
             smithy-cli
+            nodejs_22
           ];
 
           shellHook = ''

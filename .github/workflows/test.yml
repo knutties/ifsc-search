@@ -67,9 +67,16 @@ jobs:
         run: |
           set -euo pipefail
           nix develop --command make smithy-updates
-          if ! git diff --quiet -- api/; then
-            echo "::error::api/ is out of sync with smithy/models — run 'make smithy-updates' and commit the result"
-            git --no-pager diff -- api/
+          if ! git diff --quiet -- api/ clients/typescript/; then
+            echo "::error::api/ or clients/typescript/ is out of sync with smithy/models — run 'make smithy-updates' and commit the result"
+            git --no-pager diff -- api/ clients/typescript/
             exit 1
           fi
           echo "smithy ok"
+
+      - name: Build the TypeScript client
+        run: |
+          set -euo pipefail
+          cd clients/typescript
+          nix develop ../.. --command npm install --no-audit --no-fund
+          nix develop ../.. --command npm run build

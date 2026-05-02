@@ -3,7 +3,8 @@
     "sources": ["models"],
     "maven": {
         "dependencies": [
-            "software.amazon.smithy:smithy-openapi:1.68.0"
+            "software.amazon.smithy:smithy-openapi:1.68.0",
+            "software.amazon.smithy.typescript:smithy-aws-typescript-codegen:0.49.1"
         ]
     },
     "plugins": {
@@ -12,6 +13,13 @@
             "protocol": "aws.protocols#restJson1",
             "version": "3.1.0",
             "tags": true
+        },
+        "typescript-client-codegen": {
+            "service": "io.knutties.banksearch#BankSearch",
+            "package": "@knutties/bank-search-client",
+            "packageVersion": "0.1.0",
+            "packageDescription": "TypeScript client for the bank-search HTTP service.",
+            "packageManager": "npm"
         }
     }
 }

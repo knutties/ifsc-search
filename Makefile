@@ -25,14 +25,30 @@ clean:
 smithy-build:
 	cd smithy && smithy build
 
-# Copies the generated OpenAPI spec and Smithy AST into api/ so consumers
-# don't need a smithy-cli to read them.
+# Copies the generated OpenAPI spec, Smithy AST, and TypeScript client
+# sources into api/ and clients/ so consumers don't need a smithy-cli.
+# The rsync excludes preserve any local node_modules/dist artifacts that
+# devs produce by running `npm install` / `npm run build` inside
+# clients/typescript/.
 smithy-publish: smithy-build
 	cp smithy/build/smithy/source/openapi/BankSearch.openapi.json api/openapi.json
 	cp smithy/build/smithy/source/model/model.json api/model.json
+	mkdir -p clients/typescript
+	rsync -a --delete \
+	  --exclude='node_modules' \
+	  --exclude='dist-cjs' \
+	  --exclude='dist-es' \
+	  --exclude='dist-types' \
+	  --exclude='*.tsbuildinfo' \
+	  --exclude='package-lock.json' \
+	  smithy/build/smithy/source/typescript-client-codegen/ clients/typescript/
+	cp LICENSE clients/typescript/LICENSE
+	jq '.license = "MIT"' clients/typescript/package.json > clients/typescript/package.json.tmp \
+	  && mv clients/typescript/package.json.tmp clients/typescript/package.json
 
 smithy-clean:
 	rm -rf smithy/build
 
-# Used by CI to assert the committed api/ artifacts match the IDL.
+# Used by CI to assert the committed api/ and clients/ artifacts match
+# the IDL.
 smithy-updates: smithy-clean smithy-publish
