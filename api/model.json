@@ -1979,7 +1979,27 @@
                     "sdkId": "BankSearch"
                 },
                 "aws.protocols#restJson1": {},
-                "smithy.api#documentation": "HTTP search service for Indian bank branches."
+                "smithy.api#documentation": "HTTP search service for Indian bank branches.",
+                "smithy.rules#endpointRuleSet": {
+                    "version": "1.0",
+                    "parameters": {
+                        "Endpoint": {
+                            "type": "string",
+                            "builtIn": "SDK::Endpoint",
+                            "required": true,
+                            "documentation": "The HTTP endpoint to send requests to."
+                        }
+                    },
+                    "rules": [
+                        {
+                            "conditions": [],
+                            "endpoint": {
+                                "url": "{Endpoint}"
+                            },
+                            "type": "endpoint"
+                        }
+                    ]
+                }
             }
         },
         "io.knutties.banksearch#Branch": {
