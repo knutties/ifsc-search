@@ -1,5 +1,3 @@
-<!-- generated file, do not edit directly -->
-
 # @knutties/bank-search-client
 
 ## Description

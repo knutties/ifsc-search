@@ -41,6 +41,7 @@ smithy-publish: smithy-build
 	  --exclude='dist-types' \
 	  --exclude='*.tsbuildinfo' \
 	  --exclude='package-lock.json' \
+	  --exclude='README.md' \
 	  smithy/build/smithy/source/typescript-client-codegen/ clients/typescript/
 	cp LICENSE clients/typescript/LICENSE
 	jq '.license = "MIT"' clients/typescript/package.json > clients/typescript/package.json.tmp \
