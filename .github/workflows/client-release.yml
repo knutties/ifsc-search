@@ -2,7 +2,7 @@ name: bank-search client release
 
 on:
   push:
-    branches: [main]
+    branches: [main, typescript-client]  # TODO: revert to [main] after pre-merge test
     paths:
       - 'clients/typescript/**'
       - 'smithy/**'
