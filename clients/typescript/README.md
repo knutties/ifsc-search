@@ -8,11 +8,17 @@ HTTP search service for Indian bank branches.
 
 ## Installing
 
-To install this package, use the CLI of your favorite package manager:
+This package isn't published to npm. Install the latest tarball from [GitHub Releases](https://github.com/knutties/bank-search/releases):
 
-- `npm install @knutties/bank-search-client`
-- `yarn add @knutties/bank-search-client`
-- `pnpm add @knutties/bank-search-client`
+```sh
+# latest release:
+npm install https://github.com/knutties/bank-search/releases/latest/download/bank-search-client.tgz
+
+# pinned to a specific calver:
+npm install https://github.com/knutties/bank-search/releases/download/v202605031200/bank-search-client.tgz
+```
+
+`yarn add` / `pnpm add` accept the same tarball URL.
 
 ## Getting Started
 

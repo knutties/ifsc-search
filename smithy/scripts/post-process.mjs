@@ -66,6 +66,26 @@ const files = [
                 replacement: "",
             },
             {
+                label: "install instructions (point at GitHub Releases tarball)",
+                pattern:
+                    "## Installing\n\n" +
+                    "To install this package, use the CLI of your favorite package manager:\n\n" +
+                    "- `npm install @knutties/bank-search-client`\n" +
+                    "- `yarn add @knutties/bank-search-client`\n" +
+                    "- `pnpm add @knutties/bank-search-client`\n",
+                replacement:
+                    "## Installing\n\n" +
+                    "This package isn't published to npm. Install the latest tarball from " +
+                    "[GitHub Releases](https://github.com/knutties/bank-search/releases):\n\n" +
+                    "```sh\n" +
+                    "# latest release:\n" +
+                    "npm install https://github.com/knutties/bank-search/releases/latest/download/bank-search-client.tgz\n\n" +
+                    "# pinned to a specific calver:\n" +
+                    "npm install https://github.com/knutties/bank-search/releases/download/v202605031200/bank-search-client.tgz\n" +
+                    "```\n\n" +
+                    "`yarn add` / `pnpm add` accept the same tarball URL.\n",
+            },
+            {
                 label: "\"AWS SDK is modulized\" intro",
                 pattern: "The AWS SDK is modulized by clients and commands.\n",
                 replacement: "The client is modular by clients and commands.\n",
