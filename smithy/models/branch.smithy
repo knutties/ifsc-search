@@ -41,7 +41,7 @@ operation GetBranch {
         $ifsc
     }
 
-    output := for Branch {
+    output := @references([{ resource: Bank }]) for Branch {
         @required $ifsc
         @required $bank_code
         @required $bank_name

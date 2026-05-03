@@ -2203,7 +2203,12 @@
                 }
             },
             "traits": {
-                "smithy.api#output": {}
+                "smithy.api#output": {},
+                "smithy.api#references": [
+                    {
+                        "resource": "io.knutties.banksearch#Bank"
+                    }
+                ]
             }
         },
         "io.knutties.banksearch#Healthz": {
@@ -2347,7 +2352,12 @@
                 }
             },
             "traits": {
-                "smithy.api#documentation": "A search hit — a Branch's properties plus its relevance score."
+                "smithy.api#documentation": "A search hit — a Branch's properties plus its relevance score.",
+                "smithy.api#references": [
+                    {
+                        "resource": "io.knutties.banksearch#Bank"
+                    }
+                ]
             }
         },
         "io.knutties.banksearch#ResultItemList": {

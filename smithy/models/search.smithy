@@ -56,6 +56,9 @@ list ResultItemList {
 }
 
 /// A search hit — a Branch's properties plus its relevance score.
+@references([
+    { resource: Bank }
+])
 structure ResultItem for Branch {
     @required $ifsc
     @required $bank_code
