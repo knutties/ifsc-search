@@ -1,0 +1,15 @@
+{
+  "name": "bank-search-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "tsx --test smoke.test.ts"
+  },
+  "dependencies": {
+    "@knutties/bank-search-client": "file:../../clients/typescript",
+    "@types/node": "^22.18.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.3"
+  }
+}

@@ -1,0 +1,74 @@
+name: bank-search client release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/typescript/**'
+      - 'smithy/**'
+      - '.github/workflows/client-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Forces JS-based actions (e.g. softprops/action-gh-release@v2, still
+# declaring node20) onto Node 24 ahead of GitHub's June 2, 2026 cutover.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Compute calver tag
+        id: ver
+        run: echo "tag=$(date -u +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+
+      - name: Bump in-tarball version to <base>-<calver>
+        id: pkg
+        working-directory: clients/typescript
+        run: |
+          set -euo pipefail
+          base=$(jq -r .version package.json)
+          new="${base}-${{ steps.ver.outputs.tag }}"
+          npm version "$new" --no-git-tag-version --allow-same-version
+          echo "version=$new" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: clients/typescript
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Pack tarball
+        working-directory: clients/typescript
+        run: |
+          set -euo pipefail
+          npm pack
+          # Stable asset name so README install URLs don't go stale.
+          mv knutties-bank-search-client-*.tgz bank-search-client.tgz
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.tag }}
+          name: v${{ steps.ver.outputs.tag }}
+          body: |
+            Bank-search TypeScript client tarball.
+
+            In-tarball package version: `${{ steps.pkg.outputs.version }}`.
+
+            Install:
+            ```sh
+            npm install https://github.com/${{ github.repository }}/releases/download/v${{ steps.ver.outputs.tag }}/bank-search-client.tgz
+            ```
+          files: clients/typescript/bank-search-client.tgz
+          fail_on_unmatched_files: true

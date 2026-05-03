@@ -254,8 +254,9 @@
                     "error"
                 ]
             },
-            "Bank": {
+            "BankSummary": {
                 "type": "object",
+                "description": "Wire shape for a bank in the listing.",
                 "properties": {
                     "bank_code": {
                         "type": "string"
@@ -359,7 +360,7 @@
                     "banks": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/Bank"
+                            "$ref": "#/components/schemas/BankSummary"
                         }
                     }
                 },
